@@ -5165,7 +5165,7 @@ class Table(Queryable):
             unique_column_sets = [
                 {fold_identifier_case(c) for c in i.columns}
                 for i in self.indexes
-                if i.unique and not i.partial
+                if i.unique and not i.partial and all(c is not None for c in i.columns)
             ]
             lookup_column_set = {fold_identifier_case(c) for c in lookup_values}
             if lookup_column_set not in unique_column_sets:

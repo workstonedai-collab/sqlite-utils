@@ -250,3 +250,22 @@ def test_lookup_reuses_existing_full_unique_index(fresh_db):
     species.lookup({"name": "Palm"})
 
     assert species.indexes == original_indexes
+
+
+@pytest.mark.parametrize("index_columns", ["lower(name)", "name, lower(category)"])
+def test_lookup_skips_unique_expression_indexes(fresh_db, index_columns):
+    species = fresh_db.table("species", pk="id")
+    species.insert({"id": 1, "name": "Palm", "category": "Tree"})
+    species.db.execute(
+        f'CREATE UNIQUE INDEX "species_expression" ON "species" ({index_columns})'
+    )
+
+    assert species.lookup({"name": "Palm"}) == 1
+    assert species.lookup({"name": "Oak"}) == species.lookup({"name": "Oak"})
+    assert any(index.name == "species_expression" for index in species.indexes)
+    assert any(
+        index.unique == 1 and index.partial == 0 and index.columns == ["name"]
+        for index in species.indexes
+    )
+    with pytest.raises(sqlite3.IntegrityError):
+        species.insert({"id": 3, "name": "Palm", "category": "Different"})
